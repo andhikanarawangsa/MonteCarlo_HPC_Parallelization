@@ -1,7 +1,5 @@
 # Parallel Acceleration of Monte Carlo–Based Gold Investment Risk Analysis
 
-**C++17 · OpenMP · MPI · Monte Carlo Simulation · Financial Risk Analytics · High-Performance Computing**
-
 A reproducible high-performance computing study that accelerates Monte Carlo simulation for gold-investment risk analysis using two parallel programming models:
 
 - **OpenMP** for shared-memory multithreading
@@ -9,7 +7,7 @@ A reproducible high-performance computing study that accelerates Monte Carlo sim
 
 The project calibrates a Geometric Brownian Motion (GBM) model from local historical gold-price and U.S. risk-free-rate datasets, then executes large-scale simulations to estimate terminal-price distributions and tail-risk metrics. The implementation is designed to show both the **parallelization strategy** and its **measured performance impact**.
 
-> **Portfolio focus:** numerical modelling, parallel systems, reproducible experimentation, and quantitative risk analysis.
+> **Focus:** numerical modelling, parallel systems, reproducible experimentation, and quantitative risk analysis.
 
 ---
 
@@ -169,7 +167,7 @@ MonteCarlo_HPC_Parallelization/
 
 ## Requirements
 
-This is a **native C++ project**; it has no Python package dependencies. See [`requirements.txt`](requirements.txt) for the system-level environment manifest.
+This is a **native C++ project**. See [`requirements.txt`](requirements.txt) for the system-level environment manifest.
 
 Minimum environment:
 
@@ -297,7 +295,7 @@ This project is intentionally focused on CPU-based parallel Monte Carlo accelera
 ## Authors
 
 - [Andhika Narawangsa Susilo](https://github.com/andhikanarawangsa)
-- Jovan Hosea H. Napitupulu
+- [Jovan Hosea H. Napitupulu](https://github.com/JovanHosea/)
 - Kayla Pramudio Bagas Aryasatya
 
 ---

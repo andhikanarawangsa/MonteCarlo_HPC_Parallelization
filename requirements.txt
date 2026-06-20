@@ -1,0 +1,17 @@
+# Native C++ build requirements
+language_standard=C++17
+
+# One of the following C++ compiler families is required:
+compiler=GCC>=9.0 OR Clang>=10.0 OR MSVC>=19.28
+
+# Required for src/main_OpenMP.cpp
+openmp=OpenMP>=4.5
+
+# Required for src/main_MPI.cpp
+mpi=MPI>=3.1
+mpi_implementation=OpenMPI>=4.0 OR MPICH>=3.3 OR Microsoft_MPI>=10.0
+
+# Command-line tools expected by the README build instructions
+build_tools=g++ OR clang++ OR cl
+mpi_compiler_wrapper=mpicxx OR mpic++
+mpi_launcher=mpirun OR mpiexec

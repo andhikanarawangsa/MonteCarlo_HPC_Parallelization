@@ -1,7 +1,8 @@
-// Monte Carlo Simulation Parallelization
+// Monte Carlo Simulation Parallelization Using OpenMP
+// 1,000,000 paths, 252 GBM steps per path, histogram-based risk metrics.
 // 13222036 - Andhika Narawangsa Susilo
-// 13222117 - Kayla Pramudio Bagas Aryasatya
 // 13622005 - Jovan Hosea H Napitupulu
+// 13222117 - Kayla Pramudio Bagas Aryasatya
 
 #include <iostream>
 #include <fstream>
@@ -25,7 +26,7 @@ std::vector<double> readCSVColumn(const std::string& filename, int colIndex) {
     std::string line;
 
     if (!file.is_open()) {
-        std::cerr << "ERROR: Tidak dapat membuka file: " << filename << std::endl;
+        std::cerr << "ERROR: Cannot Open File: " << filename << std::endl;
         return data;
     }
 
@@ -42,7 +43,7 @@ std::vector<double> readCSVColumn(const std::string& filename, int colIndex) {
         while (std::getline(ss, token, delim)) {
             if (currentCol == colIndex) {
                 try {
-                    // Menghapus pemisah ribuan koma
+                    // erase sign
                     token.erase(std::remove(token.begin(), token.end(), ','), token.end());
                     parsedValue = std::stod(token);
                     found = true;
@@ -61,7 +62,7 @@ std::vector<double> readCSVColumn(const std::string& filename, int colIndex) {
 }
 
 // ============================================================
-//  Historical volatility berbasis log return harian
+//  Historical volatility based on daily log return
 // ============================================================
 double calculateHistoricalVolatility(const std::vector<double>& prices) {
     if (prices.size() < 2) return 0.0;
@@ -90,7 +91,7 @@ double calculateHistoricalVolatility(const std::vector<double>& prices) {
 
     variance /= static_cast<double>(logReturns.size() - 1);
 
-    // Annualized volatility, asumsi 252 trading days per year
+    // Annualized volatility, 252 trading days per year
     return std::sqrt(variance) * std::sqrt(252.0);
 }
 
@@ -164,16 +165,16 @@ double expectedShortfallFromHistogram(const std::vector<long long>& hist,
 //  Main: OpenMP-only Monte Carlo GBM
 // ============================================================
 int main(int argc, char** argv) {
-    // ./monte_carlo_openmp 1000000 HargaEmasUSD.csv RiskFreeRateUSA.csv
+    // ./monte_carlo_openmp 1000000 GoldPrice-USD.csv RiskFreeRateUSA.csv
     long long totalSimulations = 1000000000LL;
-    std::string pathEmas = "HargaEmasUSD.csv";
+    std::string pathEmas = "GoldPrice-USD.csv";
     std::string pathRate = "RiskFreeRateUSA.csv";
 
     if (argc >= 2) {
         try {
             totalSimulations = std::stoll(argv[1]);
         } catch (...) {
-            std::cerr << "ERROR: Argumen jumlah simulasi tidak valid.\n";
+            std::cerr << "ERROR: Simulation Argument Invalid.\n";
             return 1;
         }
     }
@@ -182,7 +183,7 @@ int main(int argc, char** argv) {
     if (argc >= 4) pathRate = argv[3];
 
     if (totalSimulations <= 0) {
-        std::cerr << "ERROR: Jumlah simulasi harus > 0.\n";
+        std::cerr << "ERROR: Simulation Count Must be > 0.\n";
         return 1;
     }
 
@@ -195,7 +196,7 @@ int main(int argc, char** argv) {
     std::vector<double> riskFreeRates = readCSVColumn(pathRate, 1);
 
     if (goldPrices.empty() || riskFreeRates.empty()) {
-        std::cerr << "ERROR: Data harga emas atau risk-free rate kosong.\n";
+        std::cerr << "ERROR: Gold Price or Risk Free Rate File is Empty.\n";
         return 1;
     }
 
@@ -206,16 +207,16 @@ int main(int argc, char** argv) {
     double sigma = calculateHistoricalVolatility(goldPrices);
 
     std::cout << std::fixed << std::setprecision(6);
-    std::cout << "=== KALIBRASI DATA HISTORIS DUNIA NYATA ===\n";
-    std::cout << "Jumlah Hari Harga Emas : " << goldPrices.size() << " hari\n";
-    std::cout << "Harga Awal (S0)        : $" << S0 << "\n";
+    std::cout << "=== REAL WORLD HISTORY DATA CALIBRATION===\n";
+    std::cout << "Gold Price Days Count: " << goldPrices.size() << " days\n";
+    std::cout << "Start Price (S0)        : $" << S0 << "\n";
     std::cout << "Risk-Free Rate (r)     : " << (r * 100.0) << "%\n";
-    std::cout << "Volatilitas Historis   : " << (sigma * 100.0) << "%\n\n";
+    std::cout << "History Volatility   : " << (sigma * 100.0) << "%\n\n";
 
     int maxThreads = omp_get_max_threads();
-    std::cout << "Memulai eksekusi " << totalSimulations
+    std::cout << "Start Execution " << totalSimulations
               << " Monte Carlo paralel OpenMP (252-step GBM)...\n";
-    std::cout << "Jumlah thread OpenMP   : " << maxThreads << "\n\n";
+    std::cout << "OpenMP Threads  : " << maxThreads << "\n\n";
 
     double sumPrice = 0.0;
     double sumSqPrice = 0.0;
@@ -287,8 +288,6 @@ int main(int argc, char** argv) {
         }
     }
 
-    double endTime = omp_get_wtime();
-
     // Gabungkan histogram semua thread.
     std::vector<long long> globalHist(N_BINS, 0);
     for (int t = 0; t < maxThreads; ++t) {
@@ -296,6 +295,8 @@ int main(int argc, char** argv) {
             globalHist[b] += threadHists[t][b];
         }
     }
+
+    double endTime = omp_get_wtime();
 
     double meanPrice = sumPrice / static_cast<double>(totalSimulations);
     double variance = (sumSqPrice / static_cast<double>(totalSimulations)) - (meanPrice * meanPrice);
@@ -321,22 +322,22 @@ int main(int argc, char** argv) {
     double esPrice5 = expectedShortfallFromHistogram(globalHist, HIST_MIN, HIST_MAX, 0.05, totalSimulations);
     double CVaR95 = S0 - esPrice5;
 
-    std::cout << "=== HASIL MONTE CARLO OPENMP ===\n";
-    std::cout << "Jumlah Simulasi        : " << totalSimulations << "\n";
-    std::cout << "Jumlah Step per Path   : " << N_STEPS << "\n";
-    std::cout << "Execution Time         : " << (endTime - startTime) << " detik\n\n";
+    std::cout << "=== MONTE CARLO OPENMP RESULT ===\n";
+    std::cout << "Simulation Count       : " << totalSimulations << "\n";
+    std::cout << "Step per Path          : " << N_STEPS << "\n";
+    std::cout << "Execution Time         : " << (endTime - startTime) << " s\n\n";
 
-    std::cout << "Mean Harga Simulasi    : $" << meanPrice << "\n";
-    std::cout << "Mean Analitik GBM      : $" << analyticalMean << "\n";
-    std::cout << "Std Dev Harga Akhir    : $" << stdPrice << "\n";
-    std::cout << "Min Harga Akhir        : $" << minPrice << "\n";
-    std::cout << "Max Harga Akhir        : $" << maxPrice << "\n";
-    std::cout << "Probabilitas Rugi      : " << lossProb << "%\n";
+    std::cout << "Simulation Price Mean  : $" << meanPrice << "\n";
+    std::cout << "GBM Analythics Mean    : $" << analyticalMean << "\n";
+    std::cout << "Final Price Std Dev    : $" << stdPrice << "\n";
+    std::cout << "Final Price Min        : $" << minPrice << "\n";
+    std::cout << "Final Price Max        : $" << maxPrice << "\n";
+    std::cout << "Loss Pribability       : " << lossProb << "%\n";
     std::cout << "Average Drawdown       : " << avgDrawdown << "%\n\n";
 
-    std::cout << "=== PERCENTILE HARGA AKHIR ===\n";
+    std::cout << "=== FINAL PRICE PERCENTILE ===\n";
     std::cout << "P1                    : $" << p1  << "\n";
-    std::cout << "P5 (worst 5%)         : $" << p5  << "\n";
+    std::cout << "P5  (worst 5%)        : $" << p5  << "\n";
     std::cout << "P10 (worst 10%)       : $" << p10 << "\n";
     std::cout << "P25                   : $" << p25 << "\n";
     std::cout << "P50 (Median)          : $" << p50 << "\n";

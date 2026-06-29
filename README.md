@@ -13,24 +13,27 @@ The project calibrates a Geometric Brownian Motion (GBM) model from local histor
 
 ## Highlights
 
-- Simulates **1,000,000 independent GBM paths**, each with **252 trading-day steps** — approximately **252 million stochastic state updates** per benchmark run.
-- Implements both **OpenMP** and **MPI** backends in modern C++.
-- Calibrates volatility from daily historical log returns and uses the latest available dataset values for the initial gold price and risk-free rate.
-- Computes descriptive distribution statistics, loss probability, average drawdown, percentiles, **VaR (95% and 99%)**, and approximate **CVaR (95%)**.
-- Uses memory-efficient **10,000-bin histograms** for percentile and expected-shortfall estimation instead of storing all simulated terminal prices.
-- Includes captured benchmark outputs and an accompanying technical report under `result/`.
+- Evaluates **100,000**, **1,000,000**, and **10,000,000** independent GBM paths, with **252 trading-day steps per path**.
+- Uses **1,000,000 paths** as the primary benchmark workload: approximately **252 million stochastic state updates** per run.
+- Implements functionally equivalent **OpenMP** and **MPI** backends in modern C++17.
+- Tests **1, 2, 4, 8, 12, and 16 workers** on the same single-node multicore system.
+- Quantifies execution time, speedup, parallel efficiency, and workload-size scalability.
+- Computes mean, standard deviation, probability of loss, average drawdown, percentiles, **VaR (95% and 99%)**, and approximate **CVaR (95%)**.
+- Uses memory-efficient **10,000-bin local histograms** rather than storing all terminal prices.
+- Shows that MPI overhead is more visible for the 100,000-path workload but is amortized as the simulation workload grows.
 
 ---
 
 ## Research Objective
 
-Monte Carlo risk simulation is naturally parallel because individual paths are independent, but a large number of paths and time steps can still make sequential execution expensive. This repository investigates how shared-memory and distributed-memory parallelism reduce execution time while preserving statistically consistent risk estimates.
+Monte Carlo risk simulation is naturally parallel because individual paths are independent. However, large path counts and repeated GBM time-step updates make sequential execution expensive.
 
 The study addresses three practical questions:
 
-1. How can a path-independent Monte Carlo simulation be decomposed safely across threads or processes?
-2. How do **OpenMP** and **MPI** scale under the same workload?
-3. Can the accelerated implementation retain convergence toward the analytical GBM expectation while extracting tail-risk statistics efficiently?
+1. How a path-independent Monte Carlo simulation can be partitioned safely across threads or processes.
+2. How OpenMP and MPI scale under identical worker configurations.
+3. How workload size affects parallel overhead, speedup, and efficiency.
+4. Whether parallel execution preserves convergence toward the analytical GBM expectation while producing risk metrics efficiently.
 
 ---
 
@@ -112,37 +115,84 @@ Rank 0: global percentiles, VaR, CVaR, and timing
 
 ---
 
-## Benchmark Snapshot
+## Benchmark Results
 
-All benchmark captures in this repository use **1,000,000 paths × 252 steps**. Runtime is hardware- and environment-dependent; these measurements are evidence from the recorded benchmark runs, not universal performance claims.
+All experiments use the same 252-step GBM model and worker configurations of 1, 2, 4, 8, 12, and 16. Results are specific to the recorded machine and toolchain and should not be treated as universal performance claims.
 
-### OpenMP results
+### Workload-Size Scalability Summary
 
-| Threads | Execution time (s) | Speedup vs. 1 thread |
-|---:|---:|---:|
-| 1 | 28.216 | 1.00× |
-| 2 | 13.453 | 2.10× |
-| 4 | 6.782 | 4.16× |
-| 8 | 4.876 | 5.79× |
-| 12 | 3.682 | 7.66× |
-| 16 | 3.180 | **8.87×** |
+| Workload | Best OpenMP result | Best MPI result | Main observation |
+|---:|---|---|---|
+| 100,000 paths | 0.334 s, 8.41× speedup, 16 threads | 0.394 s, 7.19× speedup, 16 ranks | MPI overhead is more visible at high worker counts |
+| 1,000,000 paths | 3.180 s, 8.88× speedup, 16 threads | 3.297 s, 8.60× speedup, 16 ranks | Primary benchmark; both implementations scale strongly |
+| 10,000,000 paths | 31.777 s, 8.92× speedup, 16 threads | 32.044 s, 8.85× speedup, 16 ranks | OpenMP and MPI become nearly identical as overhead is amortized |
 
-### MPI results
+### 100,000-Path Workload
 
-| MPI ranks | Execution time (s) | Speedup vs. 1 rank |
-|---:|---:|---:|
-| 1 | 28.360 | 1.00× |
-| 4 | 7.395 | 3.83× |
-| 8 | 5.442 | 5.21× |
-| 12 | 3.522 | 8.05× |
-| 16 | 3.297 | **8.60×** |
+| Workers | OpenMP time (s) | MPI time (s) | OpenMP speedup | MPI speedup | OpenMP efficiency | MPI efficiency |
+|---:|---:|---:|---:|---:|---:|---:|
+| 1 | 2.809 | 2.834 | 1.00× | 1.00× | 100.00% | 100.00% |
+| 2 | 1.374 | 1.357 | 2.04× | 2.09× | 102.22% | 104.42% |
+| 4 | 0.679 | 0.720 | 4.14× | 3.94× | 103.42% | 98.40% |
+| 8 | 0.515 | 0.565 | 5.45× | 5.02× | 68.18% | 62.70% |
+| 12 | 0.404 | 0.425 | 6.95× | 6.67× | 57.94% | 55.57% |
+| 16 | 0.334 | 0.394 | **8.41×** | **7.19×** | 52.56% | 44.96% |
 
-The results show strong early scaling for both approaches. Performance gains taper at higher worker counts because of shared hardware resources, synchronization overhead, process-management overhead, and the finite number of physical CPU cores.
+### 1,000,000-Path Primary Benchmark
+
+| Workers | OpenMP time (s) | MPI time (s) | OpenMP speedup | MPI speedup | OpenMP efficiency | MPI efficiency |
+|---:|---:|---:|---:|---:|---:|---:|
+| 1 | 28.220 | 28.360 | 1.00× | 1.00× | 100.00% | 100.00% |
+| 2 | 13.450 | 13.430 | 2.10× | 2.11× | 104.87% | 105.60% |
+| 4 | 6.780 | 7.400 | 4.16× | 3.84× | 104.01% | 95.88% |
+| 8 | 4.880 | 5.440 | 5.78× | 5.21× | 72.30% | 65.14% |
+| 12 | 3.680 | 3.520 | 7.66× | 8.05× | 63.86% | 67.10% |
+| 16 | 3.180 | 3.300 | **8.88×** | **8.60×** | 55.47% | 53.76% |
+
+### 10,000,000-Path Workload
+
+| Workers | OpenMP time (s) | MPI time (s) | OpenMP speedup | MPI speedup | OpenMP efficiency | MPI efficiency |
+|---:|---:|---:|---:|---:|---:|---:|
+| 1 | 283.516 | 283.519 | 1.00× | 1.00× | 100.00% | 100.00% |
+| 2 | 134.355 | 134.485 | 2.11× | 2.11× | 105.51% | 105.41% |
+| 4 | 67.423 | 67.393 | 4.21× | 4.21× | 105.13% | 105.17% |
+| 8 | 47.676 | 48.257 | 5.95× | 5.88× | 74.33% | 73.44% |
+| 12 | 35.419 | 36.038 | 8.00× | 7.87× | 66.71% | 65.56% |
+| 16 | 31.777 | 32.044 | **8.92×** | **8.85×** | 55.76% | 55.30% |
+
+### Interpretation
+
+- Both implementations show near-linear speedup through four workers.
+- Efficiency decreases beyond four workers because of synchronization, reduction, memory contention, operating-system scheduling, and use of logical processors beyond the 12 physical cores.
+- At 100,000 paths, MPI efficiency falls to **44.96%** at 16 ranks, compared with **52.56%** for OpenMP, because fixed process-management and reduction overhead represent a larger fraction of runtime.
+- At 10,000,000 paths, the larger computation per worker amortizes MPI overhead. OpenMP and MPI reach nearly identical 16-worker speedups of **8.92×** and **8.85×**, respectively.
+- Small efficiency values above 100% at two or four workers are attributed to cache effects, CPU turbo behavior, and measurement variation rather than true superlinear scaling.
 
 | Representative evidence |
 |---|
-| ![OpenMP benchmark with 16 threads](result/result_OpenMP/result_OpenMP_parallel_16.jpg) |
-| ![MPI benchmark with 16 ranks](result/result_MPI/result_MPI_parallel_16.jpg) |
+| ![OpenMP benchmark with 16 threads](result/result_OpenMP/1M/result_OpenMP_parallel_16.jpg) |
+| ![MPI benchmark with 16 ranks](result/result_MPI/1M/result_MPI_parallel_16.jpg) |
+
+---
+
+## Numerical Verification and Risk Metrics
+
+For the 1,000,000-path primary benchmark, both implementations produced mean terminal prices close to the analytical GBM expectation of **$4,687.23**.
+
+| Metric | OpenMP (16 threads) | MPI (16 ranks) |
+|---|---:|---:|
+| Execution time (s) | 3.180 | 3.297 |
+| Simulated mean price | $4,687.61 | $4,685.39 |
+| Analytical mean price | $4,687.23 | $4,687.23 |
+| Relative error | 0.01% | 0.04% |
+| Final price standard deviation | $832.44 | $832.68 |
+| Probability of loss | 43.24% | 43.52% |
+| Average drawdown | 10.91% | 10.93% |
+| VaR 95% | $1,029.08 | $1,030.57 |
+| VaR 99% | $1,419.46 | $1,422.44 |
+| Approximate CVaR 95% | $1,267.71 | $1,269.74 |
+
+The results preserve the expected statistical behavior of the GBM model while providing efficient approximations of terminal-price percentiles and tail-risk metrics.
 
 ---
 
@@ -156,8 +206,14 @@ MonteCarlo_HPC_Parallelization/
 │   ├── GoldPrice-USD.csv            # Historical gold-price data
 │   └── RiskFreeRateUSA.csv          # Historical U.S. risk-free-rate data
 ├── result/
-│   ├── result_OpenMP/               # Captured OpenMP benchmark outputs
-│   ├── result_MPI/                  # Captured MPI benchmark outputs
+│   ├── result_OpenMP/
+│   │   ├── 100K/                    # OpenMP outputs: 100,000 paths
+│   │   ├── 1M/                      # OpenMP outputs: 1,000,000 paths
+│   │   └── 10M/                     # OpenMP outputs: 10,000,000 paths
+│   ├── result_MPI/
+│   │   ├── 100K/                    # MPI outputs: 100,000 paths
+│   │   ├── 1M/                      # MPI outputs: 1,000,000 paths
+│   │   └── 10M/                     # MPI outputs: 10,000,000 paths
 │   └── MonteCarlo_Parallelization_Report.pdf
 ├── README.md
 └── requirements.txt

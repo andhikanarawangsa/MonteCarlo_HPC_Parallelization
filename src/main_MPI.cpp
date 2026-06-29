@@ -153,6 +153,11 @@ double expectedShortfallFromHistogram(const std::vector<long long>& hist,
 // Main: MPI-only Monte Carlo GBM
 // ============================================================
 int main(int argc, char** argv) {
+    // Start before MPI initialization so the reported runtime includes MPI runtime
+    // initialization, workload setup, RNG setup, the initial synchronization, and
+    // the subsequent simulation/reduction phase.
+    const auto programStartTime = std::chrono::steady_clock::now();
+
     MPI_Init(&argc, &argv);
 
     int rank = 0;
@@ -264,9 +269,8 @@ int main(int argc, char** argv) {
     std::mt19937_64 generator(seedSeq);
     std::normal_distribution<double> normalDist(0.0, 1.0);
 
-    // Synchronize before measuring so the reported runtime reflects the slowest rank.
+    // Keep the initial synchronization inside the measured interval.
     MPI_Barrier(MPI_COMM_WORLD);
-    const double startTime = MPI_Wtime();
 
     for (long long i = 0; i < localSimulations; ++i) {
         double path = S0;
@@ -309,7 +313,13 @@ int main(int argc, char** argv) {
     MPI_Reduce(localHist.data(), globalHist.data(), N_BINS,
                MPI_LONG_LONG_INT, MPI_SUM, 0, MPI_COMM_WORLD);
 
-    const double localElapsed = MPI_Wtime() - startTime;
+    // Stop after all simulation-result reductions. MPI_Reduce below selects the
+    // longest elapsed time among ranks, which represents the total parallel runtime.
+    const auto programEndTime = std::chrono::steady_clock::now();
+    const double localElapsed = std::chrono::duration<double>(
+        programEndTime - programStartTime
+    ).count();
+
     double executionTime = 0.0;
     MPI_Reduce(&localElapsed, &executionTime, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
 
@@ -346,7 +356,7 @@ int main(int argc, char** argv) {
         std::cout << "=== MONTE CARLO MPI RESULT ===\n";
         std::cout << "Simulation Count       : " << totalSimulations << "\n";
         std::cout << "Step per Path          : " << N_STEPS << "\n";
-        std::cout << "Execution Time         : " << executionTime << " s\n\n";
+        std::cout << "Execution Time (inclusive): " << executionTime << " s\n\n";
 
         std::cout << "Simulation Price Mean  : $" << meanPrice << "\n";
         std::cout << "GBM Analythics Mean    : $" << analyticalMean << "\n";

@@ -356,7 +356,7 @@ int main(int argc, char** argv) {
         std::cout << "=== MONTE CARLO MPI RESULT ===\n";
         std::cout << "Simulation Count       : " << totalSimulations << "\n";
         std::cout << "Step per Path          : " << N_STEPS << "\n";
-        std::cout << "Execution Time (inclusive): " << executionTime << " s\n\n";
+        std::cout << "Execution Time         : " << executionTime << " s\n\n";
 
         std::cout << "Simulation Price Mean  : $" << meanPrice << "\n";
         std::cout << "GBM Analythics Mean    : $" << analyticalMean << "\n";

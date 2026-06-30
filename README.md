@@ -7,6 +7,8 @@ A reproducible high-performance computing study that accelerates Monte Carlo sim
 
 The project calibrates a Geometric Brownian Motion (GBM) model from local historical gold-price and U.S. risk-free-rate datasets, then executes large-scale simulations to estimate terminal-price distributions and tail-risk metrics. The implementation is designed to show both the **parallelization strategy** and its **measured performance impact**.
 
+Full report: [MonteCarlo_Parallelization_Report (PDF)](result/MonteCarlo_Parallelization_Report.pdf)
+
 > **Focus:** numerical modelling, parallel systems, reproducible experimentation, and quantitative risk analysis.
 
 ---

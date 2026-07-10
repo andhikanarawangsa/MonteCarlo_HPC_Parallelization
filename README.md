@@ -220,14 +220,14 @@ MonteCarlo_HPC_Parallelization/
 │   │   └── 10M/                     # MPI outputs: 10,000,000 paths
 │   └── MonteCarlo_Parallelization_Report.pdf
 ├── README.md
-└── requirements.txt
+└── build_requirements.txt
 ```
 
 ---
 
 ## Requirements
 
-This is a **native C++ project**. See [`requirements.txt`](requirements.txt) for the system-level environment manifest.
+This is a **native C++ project**. See [`build_requirements.txt`](build_requirements.txt) for the system-level environment manifest.
 
 Minimum environment:
 
@@ -259,7 +259,7 @@ Use one consistent native toolchain environment, such as **MSYS2 UCRT64 + Open M
 
 ## Build (Optional)
 
-Precompiled Windows executables are already included in the src/ directory. Rebuild only if you modify the source code.
+Precompiled Windows executables are already included in the `src/` directory. Rebuild only if you modify the source code.
 
 ### OpenMP
 

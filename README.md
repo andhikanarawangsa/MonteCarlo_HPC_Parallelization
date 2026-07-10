@@ -204,7 +204,9 @@ The results preserve the expected statistical behavior of the GBM model while pr
 MonteCarlo_HPC_Parallelization/
 ├── src/
 │   ├── main_OpenMP.cpp              # Shared-memory implementation
+│   ├── main_OpenMP.exe              # OpenMP executable
 │   ├── main_MPI.cpp                 # Distributed-memory implementation
+│   ├── main_MPI.exe                 # MPI executable
 │   ├── GoldPrice-USD.csv            # Historical gold-price data
 │   └── RiskFreeRateUSA.csv          # Historical U.S. risk-free-rate data
 ├── result/
@@ -251,24 +253,24 @@ brew install gcc open-mpi
 
 Use one consistent native toolchain environment, such as **MSYS2 UCRT64 + Open MPI**, rather than Git Bash alone. Ensure that `g++`, `mpicxx`, and `mpirun` or `mpiexec` are visible from the same shell before compiling.
 
+> **Note:** The repository includes precompiled Windows executables (`montecarlo_openmp.exe` and `montecarlo_mpi.exe`) for convenience. Linux and macOS users should rebuild the executables using the build commands below.
+
 ---
 
-## Build
+## Build (Optional)
 
-Run the following from the repository root.
+Precompiled Windows executables are already included in the src/ directory. Rebuild only if you modify the source code.
 
 ### OpenMP
 
 ```bash
-mkdir -p bin
-g++ -O3 -std=c++17 -fopenmp src/main_OpenMP.cpp -o bin/montecarlo_openmp
+g++ -O3 -std=c++17 -fopenmp src/main_OpenMP.cpp -o src/montecarlo_openmp
 ```
 
 ### MPI
 
 ```bash
-mkdir -p bin
-mpicxx -O3 -std=c++17 src/main_MPI.cpp -o bin/montecarlo_mpi
+mpicxx -O3 -std=c++17 src/main_MPI.cpp -o src/montecarlo_mpi
 ```
 
 For Windows command prompts, append `.exe` to output names where appropriate.
@@ -285,32 +287,32 @@ Set the desired number of threads, then execute the model.
 
 ```bash
 export OMP_NUM_THREADS=8
-./bin/montecarlo_openmp 1000000 src/GoldPrice-USD.csv src/RiskFreeRateUSA.csv
+./src/montecarlo_openmp 1000000 src/GoldPrice-USD.csv src/RiskFreeRateUSA.csv
 ```
 
 **PowerShell**
 
 ```powershell
 $env:OMP_NUM_THREADS = 8
-.\bin\montecarlo_openmp.exe 1000000 src\GoldPrice-USD.csv src\RiskFreeRateUSA.csv
+.\src\montecarlo_openmp.exe 1000000 src\GoldPrice-USD.csv src\RiskFreeRateUSA.csv
 ```
 
 ### MPI
 
 ```bash
-mpirun -np 8 ./bin/montecarlo_mpi 1000000 src/GoldPrice-USD.csv src/RiskFreeRateUSA.csv
+mpirun -np 8 ./src/montecarlo_mpi 1000000 src/GoldPrice-USD.csv src/RiskFreeRateUSA.csv
 ```
 
 Some Open MPI installations require:
 
 ```bash
-mpirun --oversubscribe -np 8 ./bin/montecarlo_mpi 1000000 src/GoldPrice-USD.csv src/RiskFreeRateUSA.csv
+mpirun --oversubscribe -np 8 ./src/montecarlo_mpi 1000000 src/GoldPrice-USD.csv src/RiskFreeRateUSA.csv
 ```
 
 On Windows environments using Microsoft MPI, the equivalent launcher is commonly:
 
 ```powershell
-mpiexec -n 8 .\bin\montecarlo_mpi.exe 1000000 src\GoldPrice-USD.csv src\RiskFreeRateUSA.csv
+mpiexec -n 8 .\src\montecarlo_mpi.exe 1000000 src\GoldPrice-USD.csv src\RiskFreeRateUSA.csv
 ```
 
 ### Command-line arguments
@@ -322,7 +324,7 @@ mpiexec -n 8 .\bin\montecarlo_mpi.exe 1000000 src\GoldPrice-USD.csv src\RiskFree
 Example:
 
 ```bash
-./bin/montecarlo_openmp 500000 src/GoldPrice-USD.csv src/RiskFreeRateUSA.csv
+./src/montecarlo_openmp 500000 src/GoldPrice-USD.csv src/RiskFreeRateUSA.csv
 ```
 
 ---

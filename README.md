@@ -146,7 +146,7 @@ Detailed benchmark results are available in the accompanying report.
 | Representative evidence |
 |---|
 | ![OpenMP benchmark with 16 threads](result/result_OpenMP/1M/result_OpenMP_1M_parallel_16.jpg) |
-| ![MPI benchmark with 16 ranks](result/result_MPI/1M/result_MPI_1M_parallel_16.jpg) |
+| ![MPI timing breakdown with 16 ranks](result/result_Breakdown/10K/result_Breakdown__MPI_10K_16) |
 
 ---
 

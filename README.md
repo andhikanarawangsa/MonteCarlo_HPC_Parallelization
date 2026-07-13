@@ -1,4 +1,4 @@
-# Parallel Acceleration of Monte Carlo–Based Gold Investment Risk Analysis
+# Parallel Scalability Analysis of Monte Carlo-Based Gold Investment Risk Assessment Using OpenMP and MPI
 
 A reproducible high-performance computing study that accelerates Monte Carlo simulation for gold-investment risk analysis using two parallel programming models:
 
@@ -15,14 +15,15 @@ Full report: [MonteCarlo_Parallelization_Report (PDF)](result/MonteCarlo_Paralle
 
 ## Highlights
 
-- Evaluates **100,000**, **1,000,000**, and **10,000,000** independent GBM paths, with **252 trading-day steps per path**.
+- Evaluates **10,000**, **100,000**, **1,000,000**, **10,000,000**, and **100,000,000** independent GBM paths, each consisting of **252 GBM time steps**.
 - Uses **1,000,000 paths** as the primary benchmark workload: approximately **252 million stochastic state updates** per run.
 - Implements functionally equivalent **OpenMP** and **MPI** backends in modern C++17.
 - Tests **1, 2, 4, 8, 12, and 16 workers** on the same single-node multicore system.
-- Quantifies execution time, speedup, parallel efficiency, and workload-size scalability.
+- Quantifies execution time, speedup, parallel efficiency, workload scalability, and execution-time breakdown.
+- Includes execution-time breakdown analysis that separates initialization, computation, and synchronization/communication overhead.
 - Computes mean, standard deviation, probability of loss, average drawdown, percentiles, **VaR (95% and 99%)**, and approximate **CVaR (95%)**.
 - Uses memory-efficient **10,000-bin local histograms** rather than storing all terminal prices.
-- Shows that MPI overhead is more visible for the 100,000-path workload but is amortized as the simulation workload grows.
+- Demonstrates that synchronization overhead dominates small workloads, while computation dominates large workloads, consistent with Amdahl's and Gustafson's scaling principles.
 
 ---
 
@@ -36,6 +37,7 @@ The study addresses three practical questions:
 2. How OpenMP and MPI scale under identical worker configurations.
 3. How workload size affects parallel overhead, speedup, and efficiency.
 4. Whether parallel execution preserves convergence toward the analytical GBM expectation while producing risk metrics efficiently.
+5. How execution time is distributed among initialization, computation, and synchronization phases.
 
 ---
 
@@ -123,52 +125,23 @@ All experiments use the same 252-step GBM model and worker configurations of 1, 
 
 ### Workload-Size Scalability Summary
 
-| Workload | Best OpenMP result | Best MPI result | Main observation |
-|---:|---|---|---|
-| 100,000 paths | 0.334 s, 8.41× speedup, 16 threads | 0.394 s, 7.19× speedup, 16 ranks | MPI overhead is more visible at high worker counts |
-| 1,000,000 paths | 3.180 s, 8.88× speedup, 16 threads | 3.297 s, 8.60× speedup, 16 ranks | Primary benchmark; both implementations scale strongly |
-| 10,000,000 paths | 31.777 s, 8.92× speedup, 16 threads | 32.044 s, 8.85× speedup, 16 ranks | OpenMP and MPI become nearly identical as overhead is amortized |
+| Workload | Best OpenMP | Best MPI  | Observation                        |
+| -------- | ----------- | --------- | ---------------------------------- |
+| 10K      | 0.045 s     | 0.110 s   | MPI overhead dominates             |
+| 100K     | 0.334 s     | 0.394 s   | OpenMP maintains higher efficiency |
+| 1M       | 3.180 s     | 3.297 s   | Primary benchmark                  |
+| 10M      | 31.777 s    | 32.044 s  | Comparable performance             |
+| 100M     | 314.620 s   | 279.020 s | MPI achieves highest speedup       |
 
-### 100,000-Path Workload
-
-| Workers | OpenMP time (s) | MPI time (s) | OpenMP speedup | MPI speedup | OpenMP efficiency | MPI efficiency |
-|---:|---:|---:|---:|---:|---:|---:|
-| 1 | 2.809 | 2.834 | 1.00× | 1.00× | 100.00% | 100.00% |
-| 2 | 1.374 | 1.357 | 2.04× | 2.09× | 102.22% | 104.42% |
-| 4 | 0.679 | 0.720 | 4.14× | 3.94× | 103.42% | 98.40% |
-| 8 | 0.515 | 0.565 | 5.45× | 5.02× | 68.18% | 62.70% |
-| 12 | 0.404 | 0.425 | 6.95× | 6.67× | 57.94% | 55.57% |
-| 16 | 0.334 | 0.394 | **8.41×** | **7.19×** | 52.56% | 44.96% |
-
-### 1,000,000-Path Primary Benchmark
-
-| Workers | OpenMP time (s) | MPI time (s) | OpenMP speedup | MPI speedup | OpenMP efficiency | MPI efficiency |
-|---:|---:|---:|---:|---:|---:|---:|
-| 1 | 28.220 | 28.360 | 1.00× | 1.00× | 100.00% | 100.00% |
-| 2 | 13.450 | 13.430 | 2.10× | 2.11× | 104.87% | 105.60% |
-| 4 | 6.780 | 7.400 | 4.16× | 3.84× | 104.01% | 95.88% |
-| 8 | 4.880 | 5.440 | 5.78× | 5.21× | 72.30% | 65.14% |
-| 12 | 3.680 | 3.520 | 7.66× | 8.05× | 63.86% | 67.10% |
-| 16 | 3.180 | 3.300 | **8.88×** | **8.60×** | 55.47% | 53.76% |
-
-### 10,000,000-Path Workload
-
-| Workers | OpenMP time (s) | MPI time (s) | OpenMP speedup | MPI speedup | OpenMP efficiency | MPI efficiency |
-|---:|---:|---:|---:|---:|---:|---:|
-| 1 | 283.516 | 283.519 | 1.00× | 1.00× | 100.00% | 100.00% |
-| 2 | 134.355 | 134.485 | 2.11× | 2.11× | 105.51% | 105.41% |
-| 4 | 67.423 | 67.393 | 4.21× | 4.21× | 105.13% | 105.17% |
-| 8 | 47.676 | 48.257 | 5.95× | 5.88× | 74.33% | 73.44% |
-| 12 | 35.419 | 36.038 | 8.00× | 7.87× | 66.71% | 65.56% |
-| 16 | 31.777 | 32.044 | **8.92×** | **8.85×** | 55.76% | 55.30% |
+Detailed benchmark results are available in the accompanying report.
 
 ### Interpretation
 
-- Both implementations show near-linear speedup through four workers.
-- Efficiency decreases beyond four workers because of synchronization, reduction, memory contention, operating-system scheduling, and use of logical processors beyond the 12 physical cores.
-- At 100,000 paths, MPI efficiency falls to **44.96%** at 16 ranks, compared with **52.56%** for OpenMP, because fixed process-management and reduction overhead represent a larger fraction of runtime.
-- At 10,000,000 paths, the larger computation per worker amortizes MPI overhead. OpenMP and MPI reach nearly identical 16-worker speedups of **8.92×** and **8.85×**, respectively.
-- Small efficiency values above 100% at two or four workers are attributed to cache effects, CPU turbo behavior, and measurement variation rather than true superlinear scaling.
+- Both implementations achieve near-linear speedup up to four workers.
+- Speedup gradually saturates beyond four workers due to synchronization overhead and resource contention.
+- Small workloads (10K–100K) are increasingly dominated by parallel overhead, particularly in MPI.
+- As workload size increases, computation increasingly dominates execution time, allowing MPI and OpenMP to exhibit comparable scalability.
+- The observed scaling trends are consistent with Amdahl's Law and Gustafson's Law.
 
 | Representative evidence |
 |---|
@@ -207,17 +180,29 @@ MonteCarlo_HPC_Parallelization/
 │   ├── main_OpenMP.exe              # OpenMP executable
 │   ├── main_MPI.cpp                 # Distributed-memory implementation
 │   ├── main_MPI.exe                 # MPI executable
+│   ├── breakdown_OpenMP.cpp         # OpenMP timing breakdown implementation
+│   ├── breakdown_OpenMP.exe         # OpenMP executable timing breakdown
+│   ├── breakdown_MPI.cpp            # MPI timing breakdown implementation
+│   ├── breakdown_MPI.exe            # MPI executable timing breakdown
 │   ├── GoldPrice-USD.csv            # Historical gold-price data
 │   └── RiskFreeRateUSA.csv          # Historical U.S. risk-free-rate data
 ├── result/
 │   ├── result_OpenMP/
+│   │   ├── 10K/                     # OpenMP outputs: 10,000 paths
 │   │   ├── 100K/                    # OpenMP outputs: 100,000 paths
 │   │   ├── 1M/                      # OpenMP outputs: 1,000,000 paths
-│   │   └── 10M/                     # OpenMP outputs: 10,000,000 paths
+│   │   ├── 10M/                     # OpenMP outputs: 10,000,000 paths
+│   │   └── 100M/                    # OpenMP outputs: 100,000,000 paths
 │   ├── result_MPI/
+│   │   ├── 10K/                     # MPI outputs: 10,000 paths
 │   │   ├── 100K/                    # MPI outputs: 100,000 paths
 │   │   ├── 1M/                      # MPI outputs: 1,000,000 paths
-│   │   └── 10M/                     # MPI outputs: 10,000,000 paths
+│   │   ├── 10M/                     # MPI outputs: 10,000,000 paths
+│   │   └── 100M/                    # MPI outputs: 100,000,000 paths
+│   ├── result_Breakdown/
+│   │   ├── 10K/                     # Output breakdown: 10,000 paths
+│   │   ├── 1M/                      # Output breakdown: 1,000,000 paths
+│   │   └── 100M/                    # Output breakdown: 100,000,000 paths
 │   └── MonteCarlo_Parallelization_Report.pdf
 ├── README.md
 └── build_requirements.txt
@@ -335,6 +320,7 @@ Example:
 - The OpenMP implementation creates independent thread-level random streams using time and thread identifiers. Its numerical outputs therefore vary slightly from run to run, as expected for Monte Carlo simulation.
 - The included benchmark screenshots document a particular machine and toolchain. Before using the numbers in a report or publication, record the CPU model, core count, memory, OS, compiler version, compiler flags, MPI distribution, and number of repeated runs.
 - The 10,000-bin histogram trades a small quantile approximation error for bounded memory use. This is deliberate: storing every terminal price would scale memory linearly with the number of paths.
+- Additional breakdown experiments instrument the execution into initialization, computation, and synchronization phases to quantify parallel overhead under representative workloads.
 
 ---
 
@@ -342,13 +328,11 @@ Example:
 
 This project is intentionally focused on CPU-based parallel Monte Carlo acceleration. High-value extensions include:
 
-- add a `CMakeLists.txt` and CI workflow for one-command cross-platform builds;
-- publish data provenance, retrieval dates, and dataset licensing metadata;
-- run repeated trials with median runtime, standard deviation, efficiency, and confidence intervals;
-- compare static, dynamic, and guided scheduling in OpenMP;
-- add hybrid MPI + OpenMP and GPU/CUDA variants;
-- replace histogram quantiles with distributed selection or streaming quantile algorithms for tighter tail-risk accuracy;
-- add unit tests for CSV parsing, GBM calibration, reductions, and risk-metric calculations.
+- evaluate hybrid MPI + OpenMP on multi-socket systems;
+- extend to multi-node cluster environments;
+- compare CPU implementations with OpenCL, CUDA, or HIP GPU acceleration;
+- investigate adaptive scheduling and load balancing for heterogeneous workloads;
+- replace histogram-based quantiles with exact distributed selection algorithms.
 
 ---
 

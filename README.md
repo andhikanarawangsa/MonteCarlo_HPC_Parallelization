@@ -1,13 +1,13 @@
 # Parallel Scalability Analysis of Monte Carlo-Based Gold Investment Risk Assessment Using OpenMP and MPI
 
+![Language](https://img.shields.io/badge/Language-C%2B%2B17-blue)
+![OpenMP](https://img.shields.io/badge/OpenMP-Parallel-green)
+![MPI](https://img.shields.io/badge/MPI-Distributed-orange)
+![License](https://img.shields.io/badge/License-MIT-yellow)
+
+📄 **Technical Report:** [Monte Carlo Parallelization Report](result/MonteCarlo_Parallelization_Report.pdf)
+
 A reproducible high-performance computing study that accelerates Monte Carlo simulation for gold-investment risk analysis using two parallel programming models:
-
-- **OpenMP** for shared-memory multithreading
-- **MPI** for distributed-memory multiprocessing
-
-The project calibrates a Geometric Brownian Motion (GBM) model from local historical gold-price and U.S. risk-free-rate datasets, then executes large-scale simulations to estimate terminal-price distributions and tail-risk metrics. The implementation is designed to show both the **parallelization strategy** and its **measured performance impact**.
-
-Full report: [MonteCarlo_Parallelization_Report (PDF)](result/MonteCarlo_Parallelization_Report.pdf)
 
 > **Focus:** numerical modelling, parallel systems, reproducible experimentation, and quantitative risk analysis.
 
